@@ -32,28 +32,35 @@
 
 ### Shape of useInfiniteQuery Data
 
+```jsx
+const { data } = useInfiniteQuery(...);
+data.pages // (1)
+data.pageParams // (2)
+```
+
 - 데이터가 useQuery와는 다릅니다.
 - Object는 두 가지 프로퍼티를 가지고 있습니다.
     1. pages
-        1. 페이지에 대한 Object 배열입니다.
+        1. 현재까지 불러온 페이지 데이터 배열입니다.
     2. pageParams
-        1. 실제로 널리 사용되지는 않습니다.
-- 모든 쿼리는 Page Array에 대한 고유 Element를 가지고 있습니다.
-- pageParams는 검색된 쿼리의 Key를 추적합니다.
-    - 일반적으로 사용되지 않으며 여기서는 사용하지 않습니다.
+        1. 모든 페이지 매개변수를 포함하는 배열
+        2. 실제로 널리 사용되지는 않습니다.
+
+![Untitled](Section%203%20cf5eba22e8c1433aba78f924be0736e0/Untitled.png)
 
 ### useInfiniteQuery Syntax
 
 - pageParam은 queryFn의 파라미터입니다.
     - `useInfiniteQuery('sw-people', ({ pageParam = defaultUrl }) ⇒ fetchUrl(pageParam)`
     - pagination과는 달리 pageParam은 `React Query`가 관리합니다.
-- useInfiniteQuery options
+- useInfiniteQuery의 options 매개변수
     - getNextPageParam: (lastPage, allPages)
         - 다음 페이지를 가져오는 방법을 알려줍니다.
         - allPages, lastPage를 알려줍니다.
             - 그리고 pageParam을 업데이트 합니다.
-            - 데이터의 모든 페이지에 사용합니다. (allPages)
-            - 여기서는 데이터의 마지막 페이지에 사용합니다. (next property를 사용해서)
+            - lastPage는 가장 최근에 받아왔던 데이터를 의미합니다.
+            - allPages는 받아왔던 모든 데이터의 배열을 의미합니다.
+            - 여기서는 lastPage에 결과값 중 next property를 사용합니다.
 
 ```jsx
 const { data, fetchNextPage, hasNextpage } = useInfiniteQuery(
@@ -120,7 +127,7 @@ const { data, fetchNextPage, hasNextpage } = useInfiniteQuery(
 
 ```jsx
 export function InfinitePeople() {
-  const { data, fetchNextPage, hasNextPage } = useInfiniteQuery(
+  const { data, fetchNextPage, hasNextPage, isLoading, isFetching, isError, error } = useInfiniteQuery(
     'sw-people',
     ({ pageParam = initialUrl }) => fetchUrl(pageParam),
     {
@@ -128,12 +135,37 @@ export function InfinitePeople() {
     }
   );
 
+  if (isLoading) return <div className="loading">Loading...</div>
+  if (isError) return <div>Error! {error.toString()}</div>
+
   return (
-    <InfiniteScroll loadMore={fetchNextPage} hasMore={hasNextPage}>
-      {data.pages.map(pageData => {
-				/* Components */
-      })}
-    </InfiniteScroll>
+    <>
+      {isFetching && <div className="loading">Loading...</div>}
+      <InfiniteScroll loadMore={fetchNextPage} hasMore={hasNextPage}>
+        {data.pages.map(pageData => {
+          return pageData.results.map(person => (
+            <Person 
+              key={person.name} 
+              name={person.name} 
+              hairColor={person.hair_color}
+              eyeColor={person.eye_color}
+            />
+          ))
+        })}
+      </InfiniteScroll>
+    </>
   );
 }
 ```
+
+### Summary
+
+- pageParam
+    - 다음 페이지를 불러오기 위한 파라미터
+    - getNextPageParam 옵션의 결과값이 넘어옴
+    - lastPage, allPages를 통해 받아온 값을 이용해서 pageParam으로 넘길 수 있음
+- hasNextPage
+    - getNextPageParam의 결과의 존재 유무를 이용해서 판단
+    - 만약 getNextPageParam의 결과가 undefined면 false를 반환
+- fetchNextPage함수를 이용해서 다음 함수를 불러옴
+    - hasNextPage를 이용해서 언제 stop할지를 결정
